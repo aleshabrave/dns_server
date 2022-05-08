@@ -1,0 +1,7 @@
+{
+  "root_dns_server_ip": "192.5.5.241",
+  "root_dns_server_port": 53,
+  "server_port": 55,
+  "request_size": 1024,
+  "path_to_backup": ""
+}
