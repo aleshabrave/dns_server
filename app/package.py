@@ -1,7 +1,7 @@
 import struct
 from dataclasses import dataclass
 from enum import Enum
-from typing import List
+from typing import List, Tuple
 
 
 class QueryType(Enum):
@@ -152,16 +152,14 @@ def get_response_dns_package_data(
     )
 
     for question in req_questions:
-        package += _pack_domain_name(question.q_name) + struct.pack(
+        package += _pack_domain_name(question.q_name)[1] + struct.pack(
             "!HH", *[question.q_type, question.q_class]
         )
 
-    for answer in res_answer_records:  # ХУЕТА TODO
+    for answer in res_answer_records:
         package += (
-            _pack_domain_name(answer.r_name)
-            + struct.pack(
-                "!HHIH", answer.r_type, answer.r_class, answer.r_ttl, answer.rd_length
-            )
+            _pack_domain_name(answer.r_name)[1]
+            + struct.pack("!HHI", answer.r_type, answer.r_class, answer.r_ttl)
             + _pack_resource_data(answer.r_type, answer.rd_length, answer.r_data)
         )
 
@@ -170,21 +168,22 @@ def get_response_dns_package_data(
 
 def _pack_resource_data(r_type, rd_length, r_data) -> bytes:
     if r_type == QueryType.A.value:
-        data = struct.pack(f"!{rd_length}B", *r_data.split("."))
+        data = struct.pack(f"!H{rd_length}B", 4, *map(int, r_data.split(".")))
     elif r_type == QueryType.NS.value:
-        data = _pack_domain_name(r_data)
+        rd_length, data = _pack_domain_name(r_data)
+        data = struct.pack("!H", rd_length) + data
     elif r_type == QueryType.AAAA.value:
-        data = struct.pack(f"!{rd_length // 2}H", *r_data.split(":"))
+        data = struct.pack(f"!H{rd_length // 2}H", 16, r_data.split(":"))
     else:
         raise Exception(f"Unsupported query type={r_type}")
     return data
 
 
-def _pack_domain_name(domain_name) -> bytes:
+def _pack_domain_name(domain_name) -> Tuple[int, bytes]:
     package = bytes()
     labels = [(len(name), name) for name in domain_name.split(".")]
 
     for label in labels:
         package += struct.pack(f"!B", label[0]) + label[1].encode()
     package += struct.pack("!B", 0)
-    return package
+    return len(labels) + sum([label[0] for label in labels]) + 1, package
