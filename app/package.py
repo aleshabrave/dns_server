@@ -33,7 +33,7 @@ class DNSResourceRecord:
     r_name: str
     r_type: QueryType
     r_class: str
-    r_ttl: str
+    r_ttl: int
     rd_length: int
     r_data: str
 
@@ -120,7 +120,7 @@ class DNSPackage:
             )
             data = ".".join(str(octet) for octet in ipv4_address)
             self._pointer += rd_length
-        elif r_type == QueryType.NS.value:
+        elif r_type == QueryType.NS.value or r_type == QueryType.PTR.value:
             data = self._parse_name()
         elif r_type == QueryType.AAAA.value:
             ipv6_address = struct.unpack(
@@ -132,6 +132,19 @@ class DNSPackage:
         else:
             raise Exception(f"Unsupported query type={r_type}")
         return data
+
+
+def get_unsupported_response_dns_package_data(h_id: bytes) -> bytes:
+    return h_id + struct.pack(
+        "!5H",
+        *[
+            (2 << 14) + (2 << 9) + (2 << 2),
+            0,
+            0,
+            0,
+            0,
+        ],
+    )
 
 
 def get_response_dns_package_data(
@@ -169,11 +182,12 @@ def get_response_dns_package_data(
 def _pack_resource_data(r_type, rd_length, r_data) -> bytes:
     if r_type == QueryType.A.value:
         data = struct.pack(f"!H{rd_length}B", 4, *map(int, r_data.split(".")))
-    elif r_type == QueryType.NS.value:
+    elif r_type == QueryType.NS.value or r_type == QueryType.PTR.value:
         rd_length, data = _pack_domain_name(r_data)
         data = struct.pack("!H", rd_length) + data
     elif r_type == QueryType.AAAA.value:
-        data = struct.pack(f"!H{rd_length // 2}H", 16, r_data.split(":"))
+        octets = [int(octet, 16) for octet in r_data.split(":")]
+        data = struct.pack(f"!H{rd_length // 2}H", 16, *octets)
     else:
         raise Exception(f"Unsupported query type={r_type}")
     return data
