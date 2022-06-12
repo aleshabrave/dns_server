@@ -24,16 +24,18 @@ def resolve(
                 if ad_r.r_type == QueryType.A:
                     return resolve(q_request, ad_r.r_data)
 
-            for ip in _get_ips_by_name(ar.r_data):
+            for ip in _get_ips_by_name(response_package.header.id, ar.r_data):
                 return resolve(q_request, ip)
 
 
 def _get_ips_by_name(
+    r_id: int,
     name: str,
     server_ip: str = settings["root_server_ip"],
     server_port: int = settings["root_server_port"],
 ) -> Optional[List[str]]:
     q_request = builder.get_request(
+        r_id,
         name,
         QueryType.A,
         QueryClass.IN,

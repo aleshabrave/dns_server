@@ -84,8 +84,10 @@ def _pack_question(q_data: str, q_type: QueryType, q_class: QueryClass) -> bytes
     return data + struct.pack("!2H", *[q_type, q_class])
 
 
-def get_request(domain_name: str, q_type: QueryType, q_class: QueryClass) -> bytes:
+def get_request(
+    r_id: int, domain_name: str, q_type: QueryType, q_class: QueryClass
+) -> bytes:
     return struct.pack(
         "!6H",
-        *[1, 0, 1, 0, 0, 0],
+        *[r_id, 0, 1, 0, 0, 0],
     ) + _pack_question(q_data=domain_name, q_type=q_type, q_class=q_class)

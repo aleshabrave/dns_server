@@ -131,3 +131,6 @@ dmypy.json
 # Pycharm
 .venv/
 .idea/
+
+# Cacher file
+cache.txt
