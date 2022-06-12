@@ -32,9 +32,16 @@ class Server:
         total_a_records = []
 
         for question in request_package.questions:
-            q_request = builder.get_request(question.q_name, question.q_type, question.q_class)
+            q_request = builder.get_request(
+                request_package.header.id,
+                question.q_name,
+                question.q_type,
+                question.q_class,
+            )
 
-            if (cached_info := self._cacher.get(question.q_name, question.q_type)) is None:
+            if (
+                cached_info := self._cacher.get(question.q_name, question.q_type)
+            ) is None:
                 try:
                     answer = resolver.resolve(q_request=q_request)
                 except Exception as e:
