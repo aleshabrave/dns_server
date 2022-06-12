@@ -1,3 +1,4 @@
+import os
 import pickle
 import time
 from datetime import datetime
@@ -19,9 +20,12 @@ class Cacher:
 
     def load(self):
         try:
-            self.buffer = pickle.load(open(self.path, "rb"))
-        except:
-            pass
+            if os.path.getsize(self.path) > 0:
+                with open(self.path, "rb") as file:
+                    self.buffer = pickle.load(file)
+        except FileNotFoundError:
+            open(self.path, "a").close()
+            print(f"Created file {self.path}.")
 
     def start(self):
         self.cleaner.start()

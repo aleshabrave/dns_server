@@ -81,7 +81,7 @@ def _pack_domain_name(domain_name: str) -> Tuple[int, bytes]:
 
 def _pack_question(q_data: str, q_type: QueryType, q_class: QueryClass) -> bytes:
     _, data = _pack_domain_name(q_data)
-    return data + struct.pack("!2H", *[q_type.value, q_class.value])
+    return data + struct.pack("!2H", *[q_type, q_class])
 
 
 def get_request(domain_name: str, q_type: QueryType, q_class: QueryClass) -> bytes:

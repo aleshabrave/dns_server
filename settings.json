@@ -2,8 +2,8 @@
   "root_server_ip": "192.5.5.241",
   "root_server_port": 53,
   "server_ip": "127.0.0.1",
-  "server_port": 56,
+  "server_port": 57,
   "request_size": 1024,
-  "cache_filepath": "query_cache.txt",
+  "cache_filepath": "cache.txt",
   "clean_period": 3600
 }

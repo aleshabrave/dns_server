@@ -1,3 +1,12 @@
 from app import Server
 
-Server().run()
+
+def main():
+    try:
+        Server().run()
+    except Exception:
+        pass
+
+
+if __name__ == '__main__':
+    main()

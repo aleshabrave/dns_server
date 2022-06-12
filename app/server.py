@@ -1,7 +1,9 @@
 import signal
 import socket
+import time
 
 from app import Cacher, builder, dependencies, resolver
+from app.package.data import DNSPackage
 
 settings = dependencies.get_server_settings()
 
@@ -21,20 +23,37 @@ class Server:
 
     def run(self):
         while self._handle_flag:
-            self._handle_client()
+            request, address = self._server_socket.recvfrom(settings["request_size"])
+            self._handle_client(request, address)
 
-    def _handle_client(self):
-        request, address = self._server_socket.recvfrom(settings["request_size"])
-        response = self._get_response(request)
+    def _handle_client(self, request: bytes, address: str):
+        request_package = DNSPackage(request)
+
+        total_a_records = []
+
+        for question in request_package.questions:
+            q_request = builder.get_request(question.q_name, question.q_type, question.q_class)
+
+            if (cached_info := self._cacher.get(question.q_name, question.q_type)) is None:
+                try:
+                    answer = resolver.resolve(q_request=q_request)
+                except Exception as e:
+                    print(e)
+                    response = builder.get_unsupported_response(q_request[:2])
+                    self._server_socket.sendto(response, address)
+                    return
+
+                a_records = answer.answer_records
+                self._cacher.add(question.q_name, question.q_type, a_records)
+            else:
+                _, a_records = cached_info
+
+            total_a_records += a_records
+
+        response = builder.get_response(
+            request_package.header, request_package.questions, total_a_records
+        )
         self._server_socket.sendto(response, address)
-
-    @staticmethod
-    def _get_response(request: bytes) -> bytes:
-        try:
-            return resolver.resolve(q_request=request).data
-        except Exception as e:
-            print(e)
-            return builder.get_unsupported_response(request[:2])
 
     def _close(self, _, __):
         self._handle_flag = False
