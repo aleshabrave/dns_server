@@ -4,14 +4,15 @@ from datetime import datetime
 from threading import Lock, Thread
 from typing import Dict, List, Tuple
 
-from app.package import DNSResourceRecord, QueryType
+from app.package.data import DNSResourceRecord, QueryType
 
 
-class DNSCacher:
+class Cacher:
     def __init__(self, path, clean_period):
         self.path: str = path
         self.buffer: Dict[
-            str, Dict[QueryType, Tuple[datetime, List[DNSResourceRecord]]]
+            str,
+            Dict[QueryType, Tuple[datetime, List[DNSResourceRecord]]],
         ] = {}
         self.cleaner = Thread(target=self._cleaner, args=(clean_period,), daemon=True)
         self.lock = Lock()
@@ -26,7 +27,10 @@ class DNSCacher:
         self.cleaner.start()
 
     def add(
-        self, q_name: str, q_type: QueryType, answer_records: List[DNSResourceRecord]
+        self,
+        q_name: str,
+        q_type: QueryType,
+        answer_records: List[DNSResourceRecord],
     ):
         if q_name not in self.buffer:
             self.buffer[q_name] = {}

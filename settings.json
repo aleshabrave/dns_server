@@ -1,8 +1,9 @@
 {
-  "root_dns_server_ip": "192.5.5.241",
-  "root_dns_server_port": 53,
-  "server_port": 54,
+  "root_server_ip": "192.5.5.241",
+  "root_server_port": 53,
+  "server_ip": "127.0.0.1",
+  "server_port": 56,
   "request_size": 1024,
-  "path_to_cache": "cache.txt",
+  "cache_filepath": "query_cache.txt",
   "clean_period": 3600
 }

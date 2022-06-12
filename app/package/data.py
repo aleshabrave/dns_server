@@ -1,14 +1,18 @@
 import struct
 from dataclasses import dataclass
 from enum import Enum
-from typing import List, Tuple
+from typing import List
 
 
-class QueryType(Enum):
+class QueryType(int, Enum):
     A = 1
     NS = 2
     PTR = 12
     AAAA = 28
+
+
+class QueryClass(int, Enum):
+    IN = 1
 
 
 @dataclass
@@ -25,23 +29,34 @@ class DNSHeader:
 class DNSQuestion:
     q_name: str
     q_type: QueryType
-    q_class: str
+    q_class: QueryClass
 
 
 @dataclass
 class DNSResourceRecord:
     r_name: str
     r_type: QueryType
-    r_class: str
+    r_class: QueryClass
     r_ttl: int
     rd_length: int
     r_data: str
 
 
+@dataclass
 class DNSPackage:
-    def __init__(self, data: bytes):
-        self.data = data
-        self._pointer = 0
+    data: bytes
+    _pointer: int = 0
+    header: DNSHeader = None
+    questions: List[DNSQuestion] = None
+    answer_records: List[DNSResourceRecord] = None
+    authoritative_records: List[DNSResourceRecord] = None
+    additional_records: List[DNSResourceRecord] = None
+
+    def __post_init__(self):
+        self.questions = []
+        self.answer_records = []
+        self.authoritative_records = []
+        self.additional_records = []
         self._init_header()
         self._init_questions()
         self._init_resource_records()
@@ -52,7 +67,6 @@ class DNSPackage:
         self._pointer += step
 
     def _init_questions(self):
-        self.questions = []
         step = 4
         for _ in range(self.header.qd_count):
             self.questions.append(
@@ -66,9 +80,6 @@ class DNSPackage:
             self._pointer += step
 
     def _init_resource_records(self):
-        self.answer_records: List[DNSResourceRecord] = []
-        self.authoritative_records: List[DNSResourceRecord] = []
-        self.additional_records: List[DNSResourceRecord] = []
         rrs = (
             (self.answer_records, self.header.an_count),
             (self.authoritative_records, self.header.ns_count),
@@ -132,72 +143,3 @@ class DNSPackage:
         else:
             raise Exception(f"Unsupported query type={r_type}")
         return data
-
-
-def get_unsupported_response_dns_package_data(h_id: bytes) -> bytes:
-    return h_id + struct.pack(
-        "!5H",
-        *[
-            (2 << 14) + (2 << 9) + (2 << 2),
-            0,
-            0,
-            0,
-            0,
-        ],
-    )
-
-
-def get_response_dns_package_data(
-    req_header: DNSHeader,
-    req_questions: List[DNSQuestion],
-    res_answer_records: List[DNSResourceRecord],
-) -> bytes:
-    package = struct.pack(
-        "!6H",
-        *[
-            req_header.id,
-            (2 << 14) + (2 << 9),
-            len(req_questions),
-            len(res_answer_records),
-            0,
-            0,
-        ],
-    )
-
-    for question in req_questions:
-        package += _pack_domain_name(question.q_name)[1] + struct.pack(
-            "!HH", *[question.q_type, question.q_class]
-        )
-
-    for answer in res_answer_records:
-        package += (
-            _pack_domain_name(answer.r_name)[1]
-            + struct.pack("!HHI", answer.r_type, answer.r_class, answer.r_ttl)
-            + _pack_resource_data(answer.r_type, answer.rd_length, answer.r_data)
-        )
-
-    return package
-
-
-def _pack_resource_data(r_type, rd_length, r_data) -> bytes:
-    if r_type == QueryType.A.value:
-        data = struct.pack(f"!H{rd_length}B", 4, *map(int, r_data.split(".")))
-    elif r_type == QueryType.NS.value or r_type == QueryType.PTR.value:
-        rd_length, data = _pack_domain_name(r_data)
-        data = struct.pack("!H", rd_length) + data
-    elif r_type == QueryType.AAAA.value:
-        octets = [int(octet, 16) for octet in r_data.split(":")]
-        data = struct.pack(f"!H{rd_length // 2}H", 16, *octets)
-    else:
-        raise Exception(f"Unsupported query type={r_type}")
-    return data
-
-
-def _pack_domain_name(domain_name) -> Tuple[int, bytes]:
-    package = bytes()
-    labels = [(len(name), name) for name in domain_name.split(".")]
-
-    for label in labels:
-        package += struct.pack(f"!B", label[0]) + label[1].encode()
-    package += struct.pack("!B", 0)
-    return len(labels) + sum([label[0] for label in labels]) + 1, package

@@ -1,3 +1,3 @@
-from app.dns_server import DNSServer
+from app import Server
 
-DNSServer().run()
+Server().run()
